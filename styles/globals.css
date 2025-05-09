@@ -4,3 +4,26 @@
 @tailwind utilities;
 
 font-family: 'Luckiest Guy', cursive;
+
+:root {
+  --foreground-rgb: 173, 173, 173;
+  --background-rgb: 0, 0, 0;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+  font-family: "PingFang SC", "Microsoft YaHei", "微軟雅黑", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  line-height: 1.6;
+}
+
+.modal-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-transform: lowercase;
+  letter-spacing: 0.05em;
+}
+
+.chinese-text {
+  font-family: "PingFang SC", "Microsoft YaHei", "微軟雅黑", sans-serif;
+}
