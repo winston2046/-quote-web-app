@@ -1,0 +1,9 @@
+const pricePerM3 = getPrice();
+const totalPrice = pricePerM3 ? pricePerM3 * totalVolume : null; 
+
+<span>
+  重量：{totalVolume ? totalVolume.toFixed(3) + ' m³' : ''}
+  {pricePerM3 && (
+    <>　單價：{pricePerM3} 元/m³　總價：{totalPrice?.toFixed(2)} 元</>
+  )}
+</span> 

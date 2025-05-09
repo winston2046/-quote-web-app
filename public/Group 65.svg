@@ -1,0 +1,56 @@
+import React from 'react';
+
+export default function ToWherePackageModal({ open, onClose }: { open: boolean, onClose: () => void }) {
+  if (!open) return null;
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        left: 0,
+        top: 0,
+        width: '100vw',
+        height: '100vh',
+        zIndex: 1000,
+        background: 'rgba(0,0,0,0.3)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <div
+        style={{
+          position: 'relative',
+          width: 947,
+          height: 836,
+          background: 'transparent',
+          borderRadius: 53,
+          overflow: 'hidden',
+          boxShadow: '0 0 40px rgba(0,0,0,0.4)',
+        }}
+      >
+        {/* 关闭按钮 */}
+        <button
+          style={{
+            position: 'absolute',
+            right: 30,
+            top: 30,
+            width: 40,
+            height: 40,
+            background: '#fff',
+            border: 'none',
+            borderRadius: '50%',
+            fontSize: 24,
+            cursor: 'pointer',
+            zIndex: 10,
+          }}
+          onClick={onClose}
+        >×</button>
+        {/* SVG内容 */}
+        <svg width="947" height="836" viewBox="0 0 947 836" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* 这里粘贴你的SVG内容 */}
+        </svg>
+      </div>
+    </div>
+  );
+}
