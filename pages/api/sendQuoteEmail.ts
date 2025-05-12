@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import nodemailer from 'nodemailer';
+import { parse } from 'cookie';
+import { serialize } from 'cookie';
 
 interface QuoteItem {
   product: string;
@@ -13,6 +15,18 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASSWORD,
   },
 });
+
+export function requireAuth(handler: any) {
+  return (req: NextApiRequest, res: NextApiResponse) => {
+    const cookies = req.headers.cookie ? parse(req.headers.cookie) : {};
+    if (!cookies.token) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    // 將用戶名掛到 req 上
+    (req as any).username = cookies.token;
+    return handler(req, res);
+  };
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import ToWherePackageModal from '../components/ToWherePackageModal';
 
@@ -15,14 +16,54 @@ export default function Home() {
   const [modalOpen, setModalOpen] = useState(false);
   const [quoteData, setQuoteData] = useState<QuoteData | null>(null);
   const [showPrice, setShowPrice] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [user, setUser] = useState<string | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    // 檢查 cookie 是否有 token
+    const match = document.cookie.match(/token=([^;]+)/);
+    if (match) {
+      setUser(decodeURIComponent(match[1]));
+    } else {
+      setShowLogin(true);
+    }
+  }, []);
+
+  const handleLoginSuccess = (username: string) => {
+    setUser(username);
+    setShowLogin(false);
+  };
 
   const handleQuoteConfirm = (data: QuoteData) => {
     setQuoteData(data);
     setModalOpen(false);
   };
 
+  // 管理員下拉菜單
+  const adminMenu = user === 'winston' && (
+    <div style={{ position: 'absolute', left: 20, top: 20, zIndex: 50 }}>
+      <div style={{ cursor: 'pointer', userSelect: 'none' }}>
+        <span style={{ fontSize: '24px' }}>☰</span>
+        <select
+          style={{ marginLeft: 8, padding: '4px 8px', border: '1px solid #ccc', borderRadius: '4px' }}
+          onChange={e => {
+            if (e.target.value === 'admin') router.push('/admin');
+            e.target.value = '';
+          }}
+        >
+          <option value="">管理員功能</option>
+          <option value="admin">客戶歷史詢價記錄</option>
+        </select>
+      </div>
+    </div>
+  );
+
   return (
     <Layout>
+      {adminMenu}
+      {showLogin && <LoginModal onSuccess={handleLoginSuccess} />}
+      
       <div className="min-h-screen flex items-center justify-center bg-white relative">
         {/* 整張大圖 */}
         <img
@@ -171,5 +212,54 @@ export default function Home() {
         />
       </div>
     </Layout>
+  );
+}
+
+// 登入彈窗組件
+function LoginModal({ onSuccess }: { onSuccess: (username: string) => void }) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      onSuccess(username);
+    } else {
+      setError('帳號或密碼錯誤');
+    }
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+      background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
+    }}>
+      <form onSubmit={handleSubmit} style={{ background: '#fff', padding: 32, borderRadius: 8, minWidth: 320 }}>
+        <h2 style={{ marginBottom: 16 }}>請先登入</h2>
+        <input
+          placeholder="帳號"
+          value={username}
+          onChange={e => setUsername(e.target.value)}
+          style={{ width: '100%', marginBottom: 12, padding: 8 }}
+        />
+        <input
+          type="password"
+          placeholder="密碼"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          style={{ width: '100%', marginBottom: 12, padding: 8 }}
+        />
+        <button type="submit" style={{ width: '100%', padding: 8 }}>登入</button>
+        {error && <div style={{ color: 'red', marginTop: 8 }}>{error}</div>}
+      </form>
+    </div>
   );
 }
