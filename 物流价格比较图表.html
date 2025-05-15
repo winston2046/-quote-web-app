@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物流价格比较图表</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            color: #333;
+            text-align: center;
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 30px 0;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .data-table th, .data-table td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: center;
+        }
+        .data-table th {
+            background-color: #f0f0f0;
+        }
+        .data-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .product-selector {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .product-selector select, .product-selector button {
+            padding: 8px 15px;
+            font-size: 16px;
+            margin: 0 5px;
+        }
+        .conclusion {
+            background-color: #e8f4ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>物流价格比较分析图表</h1>
+        
+        <div class="product-selector">
+            <label for="product-select">选择产品规格：</label>
+            <select id="product-select">
+                <option value="120*200*28">120*200*28 (床垫)</option>
+                <option value="135*200*28">135*200*28 (床垫)</option>
+                <option value="150*200*28">150*200*28 (床垫)</option>
+                <option value="180*200*28">180*200*28 (床垫)</option>
+                <option value="200*200*28">200*200*28 (床垫)</option>
+                <option value="80×60.5×48">80×60.5×48 (枕头)</option>
+                <option value="86*65*38">86*65*38 (枕头)</option>
+            </select>
+            <label for="province-select">选择省份：</label>
+            <select id="province-select">
+                <option value="北京">北京</option>
+                <option value="河北">河北</option>
+                <option value="贵州">贵州</option>
+                <option value="广东">广东</option>
+                <option value="浙江">浙江</option>
+            </select>
+            <button onclick="updateCharts()">更新图表</button>
+        </div>
+
+        <h2>单件价格对比</h2>
+        <div class="chart-container">
+            <canvas id="priceComparisonChart"></canvas>
+        </div>
+
+        <h2>不同数量下的总成本比较</h2>
+        <div class="chart-container">
+            <canvas id="totalCostChart"></canvas>
+        </div>
+
+        <h2>临界点分析</h2>
+        <div class="chart-container">
+            <canvas id="thresholdChart"></canvas>
+        </div>
+
+        <div class="conclusion" id="conclusion">
+            <h3>结论分析</h3>
+            <p id="conclusion-text">选择产品规格和省份后，将显示详细分析。</p>
+        </div>
+
+        <h2>详细数据</h2>
+        <table class="data-table" id="data-table">
+            <thead>
+                <tr>
+                    <th>数量</th>
+                    <th>自有物流总价</th>
+                    <th>顺丰快递总价</th>
+                    <th>差价</th>
+                    <th>更优选择</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- 数据将通过JavaScript填充 -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // 产品数据
+        const products = {
+            '120*200*28': { length: 120, width: 200, height: 28, weight: 20, volume: 0.672, type: '床垫' },
+            '135*200*28': { length: 135, width: 200, height: 28, weight: 24, volume: 0.756, type: '床垫' },
+            '150*200*28': { length: 150, width: 200, height: 28, weight: 28, volume: 0.84, type: '床垫' },
+            '180*200*28': { length: 180, width: 200, height: 28, weight: 35, volume: 1.008, type: '床垫' },
+            '200*200*28': { length: 200, width: 200, height: 28, weight: 40, volume: 1.12, type: '床垫' },
+            '80×60.5×48': { length: 80, width: 60.5, height: 48, weight: 3, volume: 0.232, type: '枕头' },
+            '86*65*38': { length: 86, width: 65, height: 38, weight: 3.5, volume: 0.212, type: '枕头' }
+        };
+
+        // 顺丰价格表（首重+续重）
+        const sfPrices = {
+            '北京': { firstWeight: 35, continuedWeight: 2.2 },
+            '河北': { firstWeight: 50, continuedWeight: 2.2 },
+            '贵州': { firstWeight: 65, continuedWeight: 3.5 },
+            '广东': { firstWeight: 30, continuedWeight: 2.0 },
+            '浙江': { firstWeight: 40, continuedWeight: 2.5 }
+        };
+
+        // 自有物流基础价格 (元/m³)
+        const ownBasePrice = 159; // 基础价格
+        const ownPriceMultiplier = 1.2; // 调整后的倍率
+        const extraFee = 150; // 小于20m³的额外费用
+
+        // 计算顺丰价格
+        function calculateSFPrice(product, province) {
+            const productData = products[product];
+            const provinceData = sfPrices[province];
+            
+            // 计算轻抛重量
+            const volumeWeight = (productData.length * productData.width * productData.height) / 12000;
+            const chargingWeight = Math.max(productData.weight, volumeWeight);
+            
+            // 计算首重和续重
+            let price = 0;
+            if (chargingWeight <= 20) {
+                price = provinceData.firstWeight;
+            } else {
+                price = provinceData.firstWeight + (chargingWeight - 20) * provinceData.continuedWeight;
+            }
+            
+            return price;
+        }
+
+        // 计算自有物流价格
+        function calculateOwnLogisticsPrice(product, quantity) {
+            const productData = products[product];
+            const totalVolume = productData.volume * quantity;
+            const basePrice = ownBasePrice * ownPriceMultiplier * totalVolume;
+            
+            // 添加额外费用
+            const hasExtraFee = totalVolume < 20;
+            const totalPrice = basePrice + (hasExtraFee ? extraFee : 0);
+            
+            return {
+                basePrice,
+                totalPrice,
+                hasExtraFee,
+                totalVolume
+            };
+        }
+
+        // 计算临界点
+        function calculateThreshold(product, province) {
+            const sfPricePerItem = calculateSFPrice(product, province);
+            const productData = products[product];
+            const ownPricePerItem = ownBasePrice * ownPriceMultiplier * productData.volume;
+            
+            // 计算临界点
+            const priceDiffPerItem = sfPricePerItem - ownPricePerItem;
+            
+            // 如果顺丰已经比自有物流贵，则无临界点
+            if (priceDiffPerItem <= 0) {
+                return 0; // 自有物流始终更划算
+            }
+            
+            // 计算需要多少件才能抵消额外费用
+            const threshold = Math.ceil(extraFee / priceDiffPerItem);
+            
+            return threshold;
+        }
+
+        // 更新图表和数据
+        function updateCharts() {
+            const product = document.getElementById('product-select').value;
+            const province = document.getElementById('province-select').value;
+            
+            // 计算关键数据
+            const sfPricePerItem = calculateSFPrice(product, province);
+            const productData = products[product];
+            const ownPricePerItem = ownBasePrice * ownPriceMultiplier * productData.volume;
+            const threshold = calculateThreshold(product, province);
+            
+            // 生成数据点
+            const quantities = [1, 2, 3, 5, 10, 15, 20, 30, 50];
+            const sfPrices = [];
+            const ownPricesWithExtra = [];
+            const ownPricesNoExtra = [];
+            
+            // 填充表格数据
+            const tableBody = document.getElementById('data-table').getElementsByTagName('tbody')[0];
+            tableBody.innerHTML = '';
+            
+            quantities.forEach(qty => {
+                const sfTotalPrice = sfPricePerItem * qty;
+                const ownLogistics = calculateOwnLogisticsPrice(product, qty);
+                
+                sfPrices.push(sfTotalPrice);
+                ownPricesWithExtra.push(ownLogistics.totalPrice);
+                ownPricesNoExtra.push(ownLogistics.basePrice);
+                
+                // 添加表格行
+                const row = tableBody.insertRow();
+                row.insertCell(0).textContent = qty;
+                row.insertCell(1).textContent = ownLogistics.totalPrice.toFixed(2) + '元';
+                row.insertCell(2).textContent = sfTotalPrice.toFixed(2) + '元';
+                
+                const diff = (ownLogistics.totalPrice - sfTotalPrice).toFixed(2);
+                const diffCell = row.insertCell(3);
+                diffCell.textContent = Math.abs(diff) + '元';
+                diffCell.style.color = diff > 0 ? 'red' : 'green';
+                
+                const betterOption = diff > 0 ? '顺丰快递' : '自有物流';
+                row.insertCell(4).textContent = betterOption;
+            });
+            
+            // 更新单件价格对比图表
+            updatePriceComparisonChart(product, province, ownPricePerItem, sfPricePerItem);
+            
+            // 更新总成本比较图表
+            updateTotalCostChart(quantities, sfPrices, ownPricesWithExtra, ownPricesNoExtra);
+            
+            // 更新临界点分析图表
+            updateThresholdChart(product, province, threshold);
+            
+            // 更新结论
+            updateConclusion(product, province, ownPricePerItem, sfPricePerItem, threshold);
+        }
+
+        // 更新单件价格对比图表
+        function updatePriceComparisonChart(product, province, ownPricePerItem, sfPricePerItem) {
+            const ctx = document.getElementById('priceComparisonChart').getContext('2d');
+            
+            // 销毁现有图表
+            if (window.priceChart) {
+                window.priceChart.destroy();
+            }
+            
+            // 自有物流单件价格（带和不带额外费用的情况）
+            const extraFeePerItemArray = [5, 10, 15, 30, 50].map(qty => extraFee / qty);
+            
+            window.priceChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['基础单价', '顺丰单价', '额外费用分摊(5件)', '额外费用分摊(10件)', '额外费用分摊(15件)', '额外费用分摊(30件)', '额外费用分摊(50件)'],
+                    datasets: [{
+                        label: '价格(元)',
+                        data: [ownPricePerItem, sfPricePerItem, ...extraFeePerItemArray],
+                        backgroundColor: [
+                            'rgba(54, 162, 235, 0.6)',
+                            'rgba(255, 99, 132, 0.6)',
+                            'rgba(255, 206, 86, 0.6)',
+                            'rgba(255, 206, 86, 0.6)',
+                            'rgba(255, 206, 86, 0.6)',
+                            'rgba(255, 206, 86, 0.6)',
+                            'rgba(255, 206, 86, 0.6)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '单价(元)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `${product} 在${province}的单件价格分析`
+                        }
+                    }
+                }
+            });
+        }
+
+        // 更新总成本比较图表
+        function updateTotalCostChart(quantities, sfPrices, ownPricesWithExtra, ownPricesNoExtra) {
+            const ctx = document.getElementById('totalCostChart').getContext('2d');
+            
+            // 销毁现有图表
+            if (window.totalCostChart) {
+                window.totalCostChart.destroy();
+            }
+            
+            window.totalCostChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: quantities,
+                    datasets: [
+                        {
+                            label: '顺丰快递',
+                            data: sfPrices,
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            fill: true,
+                            tension: 0.1
+                        },
+                        {
+                            label: '自有物流(含额外费)',
+                            data: ownPricesWithExtra,
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                            fill: true,
+                            tension: 0.1
+                        },
+                        {
+                            label: '自有物流(无额外费)',
+                            data: ownPricesNoExtra,
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                            fill: true,
+                            tension: 0.1,
+                            borderDash: [5, 5]
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: '数量(件)'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '总价(元)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '不同数量下的总成本比较'
+                        }
+                    }
+                }
+            });
+        }
+
+        // 更新临界点分析图表
+        function updateThresholdChart(product, province, threshold) {
+            const ctx = document.getElementById('thresholdChart').getContext('2d');
+            
+            // 销毁现有图表
+            if (window.thresholdChart) {
+                window.thresholdChart.destroy();
+            }
+            
+            // 生成更密集的数据点
+            const quantities = Array.from({length: 100}, (_, i) => i + 1);
+            const productData = products[product];
+            const sfPricePerItem = calculateSFPrice(product, province);
+            
+            // 计算每种物流方式的成本
+            const sfCosts = quantities.map(qty => qty * sfPricePerItem);
+            const ownCostsWithExtra = quantities.map(qty => {
+                const logistics = calculateOwnLogisticsPrice(product, qty);
+                return logistics.totalPrice;
+            });
+            
+            // 找出交叉点
+            let crossPoint = 0;
+            for (let i = 0; i < quantities.length; i++) {
+                if (ownCostsWithExtra[i] <= sfCosts[i]) {
+                    crossPoint = quantities[i];
+                    break;
+                }
+            }
+            
+            window.thresholdChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: quantities,
+                    datasets: [
+                        {
+                            label: '顺丰快递总价',
+                            data: sfCosts,
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            fill: false,
+                            tension: 0.1
+                        },
+                        {
+                            label: '自有物流总价',
+                            data: ownCostsWithExtra,
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                            fill: false,
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: '数量(件)'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '总价(元)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '物流成本临界点分析'
+                        },
+                        annotation: {
+                            annotations: {
+                                line1: {
+                                    type: 'line',
+                                    xMin: threshold,
+                                    xMax: threshold,
+                                    borderColor: 'rgb(255, 99, 132)',
+                                    borderWidth: 2,
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 更新结论
+        function updateConclusion(product, province, ownPricePerItem, sfPricePerItem, threshold) {
+            const conclusionElem = document.getElementById('conclusion-text');
+            const productData = products[product];
+            const volumeForFreeExtra = 20 / productData.volume;
+            
+            let text = `<strong>${product} (${productData.type})从东莞运往${province}的物流价格分析：</strong><br>`;
+            text += `单件体积: ${productData.volume.toFixed(3)}m³, 轻抛重量: ${((productData.length * productData.width * productData.height) / 12000).toFixed(1)}kg<br>`;
+            text += `单件自有物流基本价: ${ownPricePerItem.toFixed(2)}元, 顺丰价格: ${sfPricePerItem.toFixed(2)}元<br>`;
+            
+            if (ownPricePerItem <= sfPricePerItem) {
+                text += `<span style="color:blue">结论: 自有物流基本价格已低于顺丰价格，无需考虑额外费用，直接选择自有物流更划算。</span>`;
+            } else {
+                if (threshold <= 30) {
+                    text += `<span style="color:blue">结论: 当数量少于${threshold}件时顺丰更划算，超过${threshold}件时自有物流更划算。</span>`;
+                } else {
+                    text += `<span style="color:blue">结论: 单件价格差异较小，小批量订单顺丰略有优势，大批量订单自有物流更划算。</span>`;
+                }
+            }
+            
+            text += `<br><br>要免除额外运费需要订购至少${Math.ceil(volumeForFreeExtra)}件产品（总体积≥20m³）。`;
+            
+            conclusionElem.innerHTML = text;
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', updateCharts);
+    </script>
+</body>
+</html> 

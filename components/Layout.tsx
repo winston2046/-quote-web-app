@@ -1,15 +1,17 @@
 import Head from 'next/head';
+import React from 'react';
 
 interface LayoutProps {
   children: React.ReactNode;
+  title?: string;
 }
 
-export default function Layout({ children }: LayoutProps) {
+export default function Layout({ children, title = '报价系统' }: LayoutProps) {
   return (
     <>
       <Head>
-        <title>名言集</title>
-        <meta name="description" content="每日名言分享" />
+        <title>{title}</title>
+        <meta name="description" content="床垫报价系统" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main className="min-h-screen bg-gray-100">

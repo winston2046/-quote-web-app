@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 
 const productOptions = [
-  { label: '120*200*28', value: '120*200*28', volume: 0.672 },
-  { label: '135*200*28', value: '135*200*28', volume: 0.756 },
-  { label: '150*200*28', value: '150*200*28', volume: 0.84 },
-  { label: '180*200*28', value: '180*200*28', volume: 1.008 },
-  { label: '200*200*28', value: '200*200*28', volume: 1.12 },
+  // 暂时隐藏床垫产品
+  // { label: '120*200*28 (床垫)', value: '120*200*28', volume: 0.672 },
+  // { label: '135*200*28 (床垫)', value: '135*200*28', volume: 0.756 },
+  // { label: '150*200*28 (床垫)', value: '150*200*28', volume: 0.84 },
+  // { label: '180*200*28 (床垫)', value: '180*200*28', volume: 1.008 },
+  // { label: '200*200*28 (床垫)', value: '200*200*28', volume: 1.12 },
+  { label: '80×60.5×48 (枕头)', value: '80×60.5×48', volume: 0.232 },
+  { label: '86*65*38 (枕头)', value: '86*65*38', volume: 0.212 },
 ];
 
 // select 和 input 樣式
@@ -112,7 +115,7 @@ export default function ToWherePackageModal({
       alert('請選擇完整的地址信息');
       return;
     }
-    
+
     if (items.length === 1 && (!items[0].product || !items[0].quantity)) {
       alert('請至少添加一個產品');
       return;
@@ -218,9 +221,9 @@ export default function ToWherePackageModal({
           marginTop: '9.2px',
         }}
       >
-        <img 
-          src="/to where icon.png" 
-          alt="To Where Icon" 
+        <img
+          src="/to where icon.png"
+          alt="To Where Icon"
           style={{
             position: 'absolute',
             left: '0px',
@@ -264,11 +267,11 @@ export default function ToWherePackageModal({
             height: '18.4px',
             zIndex: 1,
           }} viewBox="0 0 24 24" fill="none">
-            <path 
-              d="M7 10L12 15L17 10" 
-              stroke="white" 
-              strokeWidth="3" 
-              strokeLinecap="round" 
+            <path
+              d="M7 10L12 15L17 10"
+              stroke="white"
+              strokeWidth="3"
+              strokeLinecap="round"
               strokeLinejoin="round"
             />
           </svg>
@@ -291,11 +294,11 @@ export default function ToWherePackageModal({
             height: '18.4px',
             zIndex: 1,
           }} viewBox="0 0 24 24" fill="none">
-            <path 
-              d="M7 10L12 15L17 10" 
-              stroke="white" 
-              strokeWidth="3" 
-              strokeLinecap="round" 
+            <path
+              d="M7 10L12 15L17 10"
+              stroke="white"
+              strokeWidth="3"
+              strokeLinecap="round"
               strokeLinejoin="round"
             />
           </svg>
@@ -318,11 +321,11 @@ export default function ToWherePackageModal({
             height: '18.4px',
             zIndex: 1,
           }} viewBox="0 0 24 24" fill="none">
-            <path 
-              d="M7 10L12 15L17 10" 
-              stroke="white" 
-              strokeWidth="3" 
-              strokeLinecap="round" 
+            <path
+              d="M7 10L12 15L17 10"
+              stroke="white"
+              strokeWidth="3"
+              strokeLinecap="round"
               strokeLinejoin="round"
             />
           </svg>
@@ -338,9 +341,9 @@ export default function ToWherePackageModal({
           marginBottom: '18.4px',
         }}
       >
-        <img 
-          src="/package icon.png" 
-          alt="Package Icon" 
+        <img
+          src="/package icon.png"
+          alt="Package Icon"
           style={{
             position: 'absolute',
             left: '0px',
@@ -368,15 +371,15 @@ export default function ToWherePackageModal({
       {/* 產品列表 */}
       <div style={{ width: '386px' }}>
         {items.map((item, index) => (
-          <div key={index} style={{ 
-            display: 'flex', 
-            gap: '13.8px', 
+          <div key={index} style={{
+            display: 'flex',
+            gap: '13.8px',
             marginBottom: '13.8px',
           }}>
             <div style={{ position: 'relative' }}>
               <select
-                style={{ 
-                  ...selectStyle, 
+                style={{
+                  ...selectStyle,
                   width: '264.34px'
                 }}
                 value={item.product}
@@ -399,11 +402,11 @@ export default function ToWherePackageModal({
                 height: '18.4px',
                 zIndex: 1,
               }} viewBox="0 0 24 24" fill="none">
-                <path 
-                  d="M7 10L12 15L17 10" 
-                  stroke="white" 
-                  strokeWidth="3" 
-                  strokeLinecap="round" 
+                <path
+                  d="M7 10L12 15L17 10"
+                  stroke="white"
+                  strokeWidth="3"
+                  strokeLinecap="round"
                   strokeLinejoin="round"
                 />
               </svg>
@@ -413,8 +416,8 @@ export default function ToWherePackageModal({
                 type="text"
                 pattern="[0-9]*"
                 inputMode="numeric"
-                style={{ 
-                  ...quantityStyle, 
+                style={{
+                  ...quantityStyle,
                   width: '125.19px',
                   WebkitAppearance: 'none',
                   MozAppearance: 'textfield'
@@ -434,11 +437,11 @@ export default function ToWherePackageModal({
                 height: '18.4px',
                 zIndex: 1,
               }} viewBox="0 0 24 24" fill="none">
-                <path 
-                  d="M7 10L12 15L17 10" 
-                  stroke="white" 
-                  strokeWidth="3" 
-                  strokeLinecap="round" 
+                <path
+                  d="M7 10L12 15L17 10"
+                  stroke="white"
+                  strokeWidth="3"
+                  strokeLinecap="round"
                   strokeLinejoin="round"
                 />
               </svg>
@@ -460,9 +463,9 @@ export default function ToWherePackageModal({
       </div>
 
       {/* 確認按鈕 */}
-      <div style={{ 
-        width: '386px', 
-        display: 'flex', 
+      <div style={{
+        width: '386px',
+        display: 'flex',
         justifyContent: 'flex-end',
         marginTop: 'auto',
         paddingBottom: '16px'

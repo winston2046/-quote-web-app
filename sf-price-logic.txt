@@ -1,0 +1,145 @@
+// 将以下代码添加到pages/index.tsx文件中
+
+// 在QuoteData接口定义后添加：
+
+// 顺丰快递价格计算函数
+function calculateSFPrice(product: string, destination: string, quantity: number) {
+  // 床垫体积和重量映射
+  const productMap: Record<string, { volume: number, weight: number }> = {
+    '120*200*28': { volume: 0.672, weight: 20 },
+    '135*200*28': { volume: 0.756, weight: 24 },
+    '150*200*28': { volume: 0.84, weight: 28 },
+    '180*200*28': { volume: 1.008, weight: 35 },
+    '200*200*28': { volume: 1.12, weight: 40 },
+  };
+
+  // 默认值，以防没有匹配
+  const { volume = 0.672, weight = 20 } = productMap[product] || {};
+  
+  // 计算体积重量
+  const volumeWeight = Math.ceil(volume * 12000 / 1000) * 1000; // 轻抛系数12000
+  
+  // 不同地区首重和续重价格
+  const regionPricing: Record<string, { firstWeight: number, additionalWeight: number }> = {
+    '广东省': { firstWeight: 37, additionalWeight: 1.5 },
+    '北京': { firstWeight: 50, additionalWeight: 2.2 },
+    '上海': { firstWeight: 50, additionalWeight: 2.2 },
+    '浙江省': { firstWeight: 50, additionalWeight: 2.2 },
+    '江苏省': { firstWeight: 50, additionalWeight: 2.2 },
+    '福建省': { firstWeight: 50, additionalWeight: 2.2 },
+    '广西壮族自治区': { firstWeight: 50, additionalWeight: 2.2 },
+    '海南省': { firstWeight: 50, additionalWeight: 2.2 },
+    '湖南省': { firstWeight: 50, additionalWeight: 2.2 },
+    '安徽省': { firstWeight: 50, additionalWeight: 2.2 },
+    '贵州省': { firstWeight: 50, additionalWeight: 2.2 },
+    '湖北省': { firstWeight: 50, additionalWeight: 2.2 },
+    '四川省': { firstWeight: 50, additionalWeight: 2.2 },
+    '重庆': { firstWeight: 50, additionalWeight: 2.2 },
+    '甘肃省': { firstWeight: 75, additionalWeight: 3.5 },
+    '黑龙江省': { firstWeight: 75, additionalWeight: 3.5 },
+    '吉林省': { firstWeight: 75, additionalWeight: 3.5 },
+    '内蒙古自治区': { firstWeight: 75, additionalWeight: 3.5 },
+    '宁夏回族自治区': { firstWeight: 75, additionalWeight: 3.5 },
+    '青海省': { firstWeight: 75, additionalWeight: 3.5 },
+    '新疆维吾尔自治区': { firstWeight: 164, additionalWeight: 8 },
+    // 默认价格，如果省份未列出
+    'default': { firstWeight: 50, additionalWeight: 2.2 }
+  };
+
+  // 获取目的地的价格，如果没有则使用默认值
+  const { firstWeight, additionalWeight } = regionPricing[destination] || regionPricing['default'];
+  
+  // 计算实际计费重量（取体积重量和实际重量的较大值）
+  const chargingWeight = Math.max(weight, Math.ceil(volumeWeight / 1000));
+  
+  // 计算快递费
+  const sfPrice = firstWeight + Math.max(0, chargingWeight - 20) * additionalWeight;
+  
+  // 计算单件商品的平均价格
+  const sfPricePerItem = sfPrice / quantity;
+  
+  return {
+    totalSfPrice: sfPrice,
+    sfPricePerItem: sfPricePerItem
+  };
+}
+
+// 计算顺丰和自有物流哪个更划算
+function calculateShippingRecommendation(quoteData: QuoteData) {
+  const { province, items, totalVolume, pricePerM3 } = quoteData;
+  
+  // 如果没有产品或价格，返回空推荐
+  if (!items.length || !pricePerM3) return { recommendation: '', threshold: 0 };
+
+  // 自有物流价格（包含小于20m³的额外费用）
+  const basePrice = totalVolume * pricePerM3;
+  const hasExtraFee = totalVolume < 20;
+  const ownLogisticsPrice = basePrice + (hasExtraFee ? 150 : 0);
+  
+  // 计算第一个产品的顺丰价格（简化处理，假设所有产品都是第一个产品）
+  const firstItem = items.find(item => item.product && item.quantity);
+  if (!firstItem) return { recommendation: '', threshold: 0 };
+  
+  const totalQuantity = items.reduce((sum, item) => sum + (parseInt(item.quantity) || 0), 0);
+  const { totalSfPrice } = calculateSFPrice(firstItem.product, province, totalQuantity);
+  
+  // 计算顺丰更划算的临界点
+  // 设x为产品数量，当 (basePrice * x + 150) / x > sfPrice / x 时，顺丰更划算
+  // 简化：basePrice * x + 150 > sfPrice，求解 x
+  // x < 150 / (sfPrice/totalQuantity - basePrice/totalQuantity)
+  
+  const sfPricePerItem = totalSfPrice / totalQuantity;
+  const ownPricePerItem = basePrice / totalQuantity;
+  
+  // 如果自有物流单价已经低于顺丰，则始终推荐自有物流
+  if (ownPricePerItem <= sfPricePerItem && !hasExtraFee) {
+    return { recommendation: '我们的物流更加划算！', threshold: 0 };
+  }
+  
+  // 计算临界值（如果总数量小于这个值，顺丰更划算）
+  const threshold = hasExtraFee ? Math.ceil(150 / (sfPricePerItem - ownPricePerItem)) : 0;
+  
+  // 如果当前数量小于临界值，建议使用顺丰
+  if (threshold > 0 && totalQuantity < threshold) {
+    return {
+      recommendation: `建议${threshold}件以下选择顺丰快递，将更加经济！`,
+      threshold
+    };
+  }
+  
+  return {
+    recommendation: '我们的物流更加划算！',
+    threshold
+  };
+}
+
+// 然后在报价详情弹窗中添加以下代码段（在总价展示后）：
+
+{/* 顺丰价格比较信息 */}
+{quoteData.totalVolume < 20 && (
+  <p style={{ 
+    marginTop: '8px', 
+    color: '#FF4500', 
+    fontWeight: 'bold' 
+  }}>
+    注意：由于订单体积不满20m³，需加收150元送货费
+  </p>
+)}
+
+{/* 顺丰价格建议 */}
+{quoteData.items.length > 0 && quoteData.pricePerM3 && (
+  <div style={{ 
+    marginTop: '16px',
+    padding: '12px',
+    backgroundColor: '#F9FAFB',
+    borderRadius: '8px',
+    border: '1px solid #E5E7EB'
+  }}>
+    <p style={{ 
+      fontWeight: 'bold',
+      color: calculateShippingRecommendation(quoteData).threshold > 0 ? '#FF4500' : '#059669'
+    }}>
+      {calculateShippingRecommendation(quoteData).recommendation}
+    </p>
+  </div>
+)} 

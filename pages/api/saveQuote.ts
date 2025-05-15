@@ -25,7 +25,7 @@ function handler(req: NextApiRequest, res: NextApiResponse) {
     const ip = req.headers['x-forwarded-for']?.toString().split(',')[0] || req.socket.remoteAddress || '';
     // 直接從 req 取用戶名
     const username = (req as any).username || '未知';
-
+    
     const newQuote = {
       ...req.body,
       username,
@@ -33,15 +33,15 @@ function handler(req: NextApiRequest, res: NextApiResponse) {
       timestamp: new Date().toISOString(),
       id: `QUOTE-${Date.now()}`
     };
-
+    
     quotes.push(newQuote);
-
+    
     fs.writeFileSync(QUOTES_FILE, JSON.stringify(quotes, null, 2), 'utf8');
-
+    
     res.status(200).json({ message: 'Quote saved successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Failed to save quote' });
   }
-}
+} 
 
 export default requireAuth(handler);

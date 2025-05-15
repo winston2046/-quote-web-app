@@ -2,6 +2,20 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import ToWherePackageModal from '../components/ToWherePackageModal';
+import LoginModal from '../components/LoginModal';
+import { calculateShippingPrice, isPillow } from '../utils/shipping-calculator';
+import { calculateAdjustedPrice } from '../utils/price-calculator';
+
+// 产品体积数据
+const productVolumes: Record<string, number> = {
+  '120*200*28': 0.672,
+  '135*200*28': 0.756,
+  '150*200*28': 0.84,
+  '180*200*28': 1.008,
+  '200*200*28': 1.12,
+  '80×60.5×48': 0.232,
+  '86*65*38': 0.212,
+};
 
 interface QuoteData {
   province: string;
@@ -16,55 +30,83 @@ export default function Home() {
   const [modalOpen, setModalOpen] = useState(false);
   const [quoteData, setQuoteData] = useState<QuoteData | null>(null);
   const [showPrice, setShowPrice] = useState(false);
-  const [showLogin, setShowLogin] = useState(false);
   const [user, setUser] = useState<string | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const router = useRouter();
 
+  // 检查用户登录状态
   useEffect(() => {
-    // 檢查 cookie 是否有 token
-    const match = document.cookie.match(/token=([^;]+)/);
-    if (match) {
-      setUser(decodeURIComponent(match[1]));
-    } else {
-      setShowLogin(true);
-    }
-  }, []);
+    const checkLogin = () => {
+      const match = document.cookie.match(/token=([^;]+)/);
+      if (match) {
+        setUser(match[1]);
+        setShowLoginModal(false);
+      } else {
+        setUser(null);
+        setShowLoginModal(true);
+      }
+    };
 
-  const handleLoginSuccess = (username: string) => {
-    setUser(username);
-    setShowLogin(false);
-  };
+    checkLogin();
+  }, []);
 
   const handleQuoteConfirm = (data: QuoteData) => {
     setQuoteData(data);
     setModalOpen(false);
   };
 
-  // 管理員下拉菜單
-  const adminMenu = user === 'winston' && (
-    <div style={{ position: 'absolute', left: 20, top: 20, zIndex: 50 }}>
-      <div style={{ cursor: 'pointer', userSelect: 'none' }}>
-        <span style={{ fontSize: '24px' }}>☰</span>
-        <select
-          style={{ marginLeft: 8, padding: '4px 8px', border: '1px solid #ccc', borderRadius: '4px' }}
-          onChange={e => {
-            if (e.target.value === 'admin') router.push('/admin');
-            e.target.value = '';
-          }}
-        >
-          <option value="">管理員功能</option>
-          <option value="admin">客戶歷史詢價記錄</option>
-        </select>
-      </div>
-    </div>
-  );
+  // 处理登录成功
+  const handleLoginSuccess = (username: string) => {
+    setUser(username);
+    setShowLoginModal(false);
+  };
+
+  // 处理登出
+  const handleLogout = () => {
+    // 清除cookie
+    document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:01 GMT; path=/';
+    document.cookie = 'login_timestamp=; expires=Thu, 01 Jan 1970 00:00:01 GMT; path=/';
+    setUser(null);
+    setShowLoginModal(true);
+  };
 
   return (
     <Layout>
-      {adminMenu}
-      {showLogin && <LoginModal onSuccess={handleLoginSuccess} />}
-      
+      {/* 登录/登出按钮 */}
+      <div className="absolute top-4 right-4 z-50">
+        {user ? (
+          <div className="flex items-center space-x-4">
+            <span className="text-gray-700">
+              {user === 'winston' ? '管理员' : '用户'}: {user}
+            </span>
+            {user === 'winston' && (
+              <button
+                onClick={() => router.push('/admin')}
+                className="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700 transition-colors"
+              >
+                管理后台
+              </button>
+            )}
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+            >
+              退出登录
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowLoginModal(true)}
+            className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors"
+          >
+            登录
+          </button>
+        )}
+      </div>
+
       <div className="min-h-screen flex items-center justify-center bg-white relative">
+        {/* 登录模态框 */}
+        <LoginModal isOpen={showLoginModal} onSuccess={handleLoginSuccess} />
         {/* 整張大圖 */}
         <img
           src="/main_banner.png"
@@ -86,10 +128,16 @@ export default function Home() {
             padding: 0,
             zIndex: 10,
           }}
-          onClick={() => setModalOpen(true)}
+          onClick={() => {
+            if (user) {
+              setModalOpen(true);
+            } else {
+              setShowLoginModal(true);
+            }
+          }}
           aria-label="TO WHERE & PACKAGE"
         />
-        
+
         {/* 价格按钮 */}
         {quoteData && (
           <button
@@ -108,7 +156,7 @@ export default function Home() {
             onClick={() => {
               // 顯示報價
               setShowPrice(true);
-              
+
               // 靜默記錄數據
               fetch('/api/saveQuote', {
                 method: 'POST',
@@ -160,25 +208,47 @@ export default function Home() {
               <div style={{ marginBottom: '16px' }}>
                 <p>地址：{quoteData.province} {quoteData.city} {quoteData.district}</p>
                 <p>总体积：{quoteData.totalVolume.toFixed(3)} m³</p>
-                <p>单价：{quoteData.pricePerM3} 元/m³</p>
-                <p>总价：{(quoteData.totalVolume * (quoteData.pricePerM3 || 0)).toFixed(2)} 元</p>
               </div>
               <div style={{ marginBottom: '24px' }}>
                 <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '12px' }}>
                   产品明细
                 </h3>
-                {quoteData.items.map((item, index) => (
-                  item.product && item.quantity ? (
-                    <p key={index}>
-                      {item.product} × {item.quantity}
-                    </p>
-                  ) : null
-                ))}
+                {quoteData.items.map((item, index) => {
+                  if (!item.product || !item.quantity) return null;
+
+                  // 计算运输价格
+                  const shippingInfo = calculateShippingPrice(
+                    item.product,
+                    quoteData.province,
+                    parseInt(item.quantity)
+                  );
+
+                  return (
+                    <div key={index} style={{ marginBottom: '8px' }}>
+                      <p>
+                        {item.product} × {item.quantity}
+                        <div style={{
+                          marginLeft: '8px',
+                          marginTop: '4px',
+                          color: '#059669',
+                          fontSize: '14px',
+                          fontWeight: 'bold'
+                        }}>
+                          {isPillow(item.product) ? (
+                            <p>运费: {calculateAdjustedPrice(shippingInfo.totalPrice).toFixed(2)} 元</p>
+                          ) : (
+                            <p>运费: {(quoteData.pricePerM3 ? quoteData.pricePerM3 * parseFloat(item.quantity) * (productVolumes[item.product] || 0) : 0).toFixed(2)} 元</p>
+                          )}
+                        </div>
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
-              
+
               {/* 備註說明 */}
-              <div style={{ 
-                marginTop: '32px', 
+              <div style={{
+                marginTop: '32px',
                 paddingTop: '24px',
                 borderTop: '1px solid #E5E7EB',
                 fontSize: '14px',
@@ -186,13 +256,16 @@ export default function Home() {
                 color: '#374151'
               }}>
                 <p style={{ marginBottom: '16px' }}>
-                  此報價適用於月發貨量 3,000-5,000 立方米的客戶專屬優惠。此報價含稅，適用於體積滿 20m³ 的訂單；未滿則加收 150 元送貨費。報價有效期為 30 天。價格不含上樓、搬運或特殊裝卸費，如有需求可另行報價。此報價僅供參考，最終以雙方簽訂之協議為準。
+                  {quoteData.items.every(item => item.product && isPillow(item.product))
+                    ? '此報價適用於月發貨量 3,000-5,000 立方米的客戶專屬優惠。此報價含稅。報價有效期為 30 天。此報價僅供參考，最終以雙方簽訂之協議為準。'
+                    : '此報價適用於月發貨量 3,000-5,000 立方米的客戶專屬優惠。此報價含稅，適用於體積滿 20m³ 的訂單；未滿則加收 150 元送貨費。報價有效期為 30 天。價格不含上樓、搬運或特殊裝卸費，如有需求可另行報價。此報價僅供參考，最終以雙方簽訂之協議為準。'
+                  }
                 </p>
-                <div style={{ 
-                  width: '100%', 
-                  height: '1px', 
-                  background: '#E5E7EB', 
-                  margin: '16px 0' 
+                <div style={{
+                  width: '100%',
+                  height: '1px',
+                  background: '#E5E7EB',
+                  margin: '16px 0'
                 }} />
                 <div style={{ color: '#6B7280' }}>
                   <p style={{ marginBottom: '8px' }}>公司名稱：好運勢®️（東莞）百貨有限公司</p>
@@ -212,54 +285,5 @@ export default function Home() {
         />
       </div>
     </Layout>
-  );
-}
-
-// 登入彈窗組件
-function LoginModal({ onSuccess }: { onSuccess: (username: string) => void }) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    const res = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      onSuccess(username);
-    } else {
-      setError('帳號或密碼錯誤');
-    }
-  };
-
-  return (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-      background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
-    }}>
-      <form onSubmit={handleSubmit} style={{ background: '#fff', padding: 32, borderRadius: 8, minWidth: 320 }}>
-        <h2 style={{ marginBottom: 16 }}>請先登入</h2>
-        <input
-          placeholder="帳號"
-          value={username}
-          onChange={e => setUsername(e.target.value)}
-          style={{ width: '100%', marginBottom: 12, padding: 8 }}
-        />
-        <input
-          type="password"
-          placeholder="密碼"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          style={{ width: '100%', marginBottom: 12, padding: 8 }}
-        />
-        <button type="submit" style={{ width: '100%', padding: 8 }}>登入</button>
-        {error && <div style={{ color: 'red', marginTop: 8 }}>{error}</div>}
-      </form>
-    </div>
   );
 }
