@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import fs from 'fs';
 import path from 'path';
 import { requireAuth } from '../../lib/auth';
+import { getIPLocation, formatIPLocation } from '../../utils/ip-location';
 
 const QUOTES_FILE = path.join(process.cwd(), 'data', 'quotes.json');
 
@@ -15,7 +16,7 @@ if (!fs.existsSync(QUOTES_FILE)) {
   fs.writeFileSync(QUOTES_FILE, '[]', 'utf8');
 }
 
-function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
@@ -36,6 +37,11 @@ function handler(req: NextApiRequest, res: NextApiResponse) {
       : typeof ip === 'string'
         ? ip.split(',')[0].trim()
         : '';
+
+    // 查询IP地理位置
+    const ipLocation = await getIPLocation(clientIp);
+    const ipLocationStr = formatIPLocation(ipLocation);
+
     // 直接從 req 取用戶名
     const username = (req as any).username || '未知';
 
@@ -43,6 +49,7 @@ function handler(req: NextApiRequest, res: NextApiResponse) {
       ...req.body,
       username,
       ip: clientIp,
+      ipLocation: ipLocationStr,
       timestamp: new Date().toISOString(),
       id: `QUOTE-${Date.now()}`
     };
@@ -53,6 +60,7 @@ function handler(req: NextApiRequest, res: NextApiResponse) {
 
     res.status(200).json({ message: 'Quote saved successfully' });
   } catch (error) {
+    console.error('保存报价失败:', error);
     res.status(500).json({ message: 'Failed to save quote' });
   }
 }

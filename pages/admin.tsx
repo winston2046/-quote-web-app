@@ -20,9 +20,9 @@ export default function Admin() {
       router.push('/');
       return;
     }
-    
+
     setUser(match[1]);
-    
+
     fetch('/api/admin/quotes-today')
       .then(res => {
         if (!res.ok) throw new Error('未授權或伺服器錯誤');
@@ -36,7 +36,7 @@ export default function Admin() {
     // 清除登录cookie
     deleteCookie('token');
     deleteCookie('login_timestamp');
-    
+
     // 返回主页
     router.push('/');
   };
@@ -51,25 +51,25 @@ export default function Admin() {
         <title>管理员后台 - 报价系统</title>
         <meta name="description" content="报价系统管理后台" />
       </Head>
-      
+
       {/* 导航栏 */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         padding: '15px 20px',
         background: '#333',
         color: 'white'
       }}>
         <div>
-          <button 
+          <button
             onClick={handleBack}
-            style={{ 
-              padding: '8px 16px', 
-              backgroundColor: '#555', 
-              color: 'white', 
-              border: 'none', 
-              borderRadius: '4px', 
+            style={{
+              padding: '8px 16px',
+              backgroundColor: '#555',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
               cursor: 'pointer',
               marginRight: '10px'
             }}
@@ -78,18 +78,18 @@ export default function Admin() {
           </button>
           <span style={{ fontSize: '18px', fontWeight: 'bold' }}>管理员后台</span>
         </div>
-        
+
         {user && (
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <span style={{ marginRight: '15px' }}>管理员: {user}</span>
-            <button 
-              onClick={handleLogout} 
-              style={{ 
-                padding: '6px 12px', 
-                backgroundColor: '#f44336', 
-                color: 'white', 
-                border: 'none', 
-                borderRadius: '4px', 
+            <button
+              onClick={handleLogout}
+              style={{
+                padding: '6px 12px',
+                backgroundColor: '#f44336',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
                 cursor: 'pointer'
               }}
             >
@@ -98,7 +98,7 @@ export default function Admin() {
           </div>
         )}
       </div>
-      
+
       <div style={{ maxWidth: 1200, margin: '40px auto', padding: '0 20px' }}>
         <h2 style={{ fontSize: '24px', marginBottom: '20px' }}>询价记录查询</h2>
         {error && <div style={{ color: 'red', padding: '10px', background: '#ffeeee', borderRadius: '4px', marginBottom: '20px' }}>{error}</div>}
@@ -112,6 +112,7 @@ export default function Admin() {
                 <th style={{ border: '1px solid #ddd', padding: 10 }}>总体积(m³)</th>
                 <th style={{ border: '1px solid #ddd', padding: 10 }}>总金额(元)</th>
                 <th style={{ border: '1px solid #ddd', padding: 10 }}>IP地址</th>
+                <th style={{ border: '1px solid #ddd', padding: 10 }}>IP位置</th>
               </tr>
             </thead>
             <tbody>
@@ -123,6 +124,7 @@ export default function Admin() {
                   <td style={{ border: '1px solid #ddd', padding: 10 }}>{q.totalVolume}</td>
                   <td style={{ border: '1px solid #ddd', padding: 10 }}>{q.pricePerM3 && q.totalVolume ? (q.pricePerM3 * q.totalVolume).toFixed(2) : ''}</td>
                   <td style={{ border: '1px solid #ddd', padding: 10 }}>{q.ip || '未知'}</td>
+                  <td style={{ border: '1px solid #ddd', padding: 10 }}>{q.ipLocation || '未知'}</td>
                 </tr>
               ))}
             </tbody>
